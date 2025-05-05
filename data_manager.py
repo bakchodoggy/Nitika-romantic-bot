@@ -27,9 +27,10 @@ def save_data(data):
         except IOError:
             print("Error saving data!")
 
-def get_user(uid):
+def load_user(uid):
     """Retrieves a specific user's data."""
-    return load_data().get(str(uid), {})
+    data = load_data()
+    return data.get(str(uid), {})
 
 def save_user(uid, user_data):
     """Saves individual user data securely."""
