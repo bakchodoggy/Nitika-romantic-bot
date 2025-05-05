@@ -68,12 +68,14 @@ async def handle_message(update: Update, context: CallbackContext):
 
     try:
         user_input = update.message.text
-        logging.info(f"User Input: {user_input}")  # Log user input
+        logging.info(f"User Input from {uid}: {user_input}")
 
+        # Generate reply
         reply = await generate_reply(uid, user_input, data)
-        logging.info(f"Generated Reply: {reply}")  # Log generated reply
+        logging.info(f"Generated Reply: {reply}")
 
-        reply = trim_reply(reply)  # Trimming overly long replies
+        # Trim overly long replies
+        reply = trim_reply(reply)
         await update.message.reply_text(reply)
 
         # Handle fantasy mode image if enabled
@@ -82,12 +84,13 @@ async def handle_message(update: Update, context: CallbackContext):
             if image:
                 await update.message.reply_photo(photo=image)
 
-        # Deduct a heartbeat and save user data
+        # Deduct heartbeats and save user data
         data["heartbeats"] -= 1
         save_user(uid, data)
 
     except Exception as e:
-        logging.error(f"Error in handle_message: {e}")  # Log exception details
+        # Log detailed exception info
+        logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
 # Adding handlers
