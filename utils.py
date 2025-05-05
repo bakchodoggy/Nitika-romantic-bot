@@ -22,7 +22,7 @@ def trim_reply(text):
     """Cleans up replies by removing extra spaces and newlines."""
     return text.strip()
 
-def send_typing_action(update, context):
+async def send_typing_action(update, context):
     """Makes the bot show 'typing...' before sending a message."""
-    context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
