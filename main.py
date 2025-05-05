@@ -52,7 +52,6 @@ async def forgetme(update: Update, context: CallbackContext):
 
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
-# Updated handle_message function with logging
 async def handle_message(update: Update, context: CallbackContext):
     """Handles user messages and generates a reply."""
     uid = str(update.effective_user.id)
@@ -69,21 +68,26 @@ async def handle_message(update: Update, context: CallbackContext):
 
     try:
         user_input = update.message.text
-        reply = await generate_reply(uid, user_input, data)
-        reply = trim_reply(reply)  # Trimming overly long replies
+        logging.info(f"User Input: {user_input}")  # Log user input
 
+        reply = await generate_reply(uid, user_input, data)
+        logging.info(f"Generated Reply: {reply}")  # Log generated reply
+
+        reply = trim_reply(reply)  # Trimming overly long replies
         await update.message.reply_text(reply)
 
+        # Handle fantasy mode image if enabled
         if data.get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
                 await update.message.reply_photo(photo=image)
 
+        # Deduct a heartbeat and save user data
         data["heartbeats"] -= 1
         save_user(uid, data)
 
     except Exception as e:
-        logging.error(f"Error in handle_message: {e}")
+        logging.error(f"Error in handle_message: {e}")  # Log exception details
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
 # Adding handlers
