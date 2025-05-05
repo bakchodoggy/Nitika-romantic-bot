@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -9,6 +10,9 @@ from chat_manager import generate_reply
 from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
 
 # Load Telegram bot token securely
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -48,13 +52,13 @@ async def forgetme(update: Update, context: CallbackContext):
 
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
+# Updated handle_message function with logging
 async def handle_message(update: Update, context: CallbackContext):
     """Handles user messages and generates a reply."""
     uid = str(update.effective_user.id)
     user_data.setdefault(uid, load_user(uid))
-
     data = user_data[uid]
-    
+
     if data.get("heartbeats", 5) <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue."
@@ -66,7 +70,7 @@ async def handle_message(update: Update, context: CallbackContext):
     try:
         user_input = update.message.text
         reply = await generate_reply(uid, user_input, data)
-        reply = trim_reply(reply)
+        reply = trim_reply(reply)  # Trimming overly long replies
 
         await update.message.reply_text(reply)
 
@@ -79,6 +83,7 @@ async def handle_message(update: Update, context: CallbackContext):
         save_user(uid, data)
 
     except Exception as e:
+        logging.error(f"Error in handle_message: {e}")
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
 # Adding handlers
