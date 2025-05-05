@@ -18,11 +18,11 @@ def now_date():
     """Returns the current date in YYYY-MM-DD format."""
     return datetime.now().strftime("%Y-%m-%d")
 
-def trim_reply(text):
-    """Cleans up replies by removing extra spaces and newlines."""
-    return text.strip()
+def trim_reply(text, max_length=200):
+    """Cleans up replies by removing extra spaces and newlines, and trims to a maximum length."""
+    text = text.strip()
+    return text[:max_length] + "..." if len(text) > max_length else text
 
 async def send_typing_action(update, context):
     """Makes the bot show 'typing...' before sending a message."""
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
