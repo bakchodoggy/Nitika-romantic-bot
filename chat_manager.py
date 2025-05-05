@@ -45,4 +45,3 @@ async def generate_reply(uid, user_input, data):
 
     except Exception as e:
         return f"Error generating reply: {str(e)}"
-
