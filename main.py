@@ -10,14 +10,16 @@ from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
-# Load Telegram bot token securely from environment variables
+# Load Telegram bot token securely
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Ensure token is present before starting the bot
+# Ensure token is set
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
+# Create application (NO Updater object)
 app = ApplicationBuilder().token(TOKEN).build()
+
 user_data = {}
 
 async def start(update: Update, context: CallbackContext):
@@ -42,7 +44,7 @@ async def forgetme(update: Update, context: CallbackContext):
     """Handles /forgetme command to wipe user data."""
     uid = str(update.effective_user.id)
     save_user(uid, {})
-    user_data.pop(uid, None)  # Remove cached user data
+    user_data.pop(uid, None)
 
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
@@ -68,24 +70,23 @@ async def handle_message(update: Update, context: CallbackContext):
 
         await update.message.reply_text(reply)
 
-        # Send fantasy image if fantasy mode is enabled
         if data.get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
                 await update.message.reply_photo(photo=image)
 
-        # Reduce heartbeats & save data
         data["heartbeats"] -= 1
         save_user(uid, data)
 
     except Exception as e:
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
-# Adding handlers to the bot
+# Adding handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("profile", profile))
 app.add_handler(CommandHandler("forgetme", forgetme))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+# Start bot with polling (Updater is REMOVED)
 print("Bot is running...")
 app.run_polling()
