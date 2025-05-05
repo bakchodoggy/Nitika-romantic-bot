@@ -1,16 +1,19 @@
 import os
 import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    filters, CallbackContext
+)
 from chat_manager import generate_reply
 from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
-# Load Telegram bot token securely
+# Load Telegram bot token securely from environment variables
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Ensure token is present before starting bot
+# Ensure token is present before starting the bot
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
@@ -22,7 +25,9 @@ async def start(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
 
-    await update.message.reply_text("Hey! I’m Nitika... your dreamy AI companion. Type anything, and let's chat ❤️")
+    await update.message.reply_text(
+        "Hey! I’m Nitika... your dreamy AI companion. Type anything, and let's chat ❤️"
+    )
 
 async def profile(update: Update, context: CallbackContext):
     """Handles /profile command to show user data."""
@@ -49,7 +54,9 @@ async def handle_message(update: Update, context: CallbackContext):
     data = user_data[uid]
     
     if data.get("heartbeats", 5) <= 0:
-        await update.message.reply_text("You're out of heartbeats! Invite a friend or buy more to continue.")
+        await update.message.reply_text(
+            "You're out of heartbeats! Invite a friend or buy more to continue."
+        )
         return
 
     await send_typing_action(update, context)
