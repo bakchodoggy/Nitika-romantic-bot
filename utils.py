@@ -1,6 +1,7 @@
 from datetime import datetime
 
 def format_profile(user_data):
+    """Formats a user's profile details into a readable string."""
     lines = ["**Your Profile**"]
     keys = ["name", "mood", "fantasy", "heartbeats", "gems", "referrals"]
 
@@ -14,4 +15,14 @@ def format_profile(user_data):
     return "\n".join(lines)
 
 def now_date():
+    """Returns the current date in YYYY-MM-DD format."""
     return datetime.now().strftime("%Y-%m-%d")
+
+def trim_reply(text):
+    """Cleans up replies by removing extra spaces and newlines."""
+    return text.strip()
+
+def send_typing_action(update, context):
+    """Makes the bot show 'typing...' before sending a message."""
+    context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
