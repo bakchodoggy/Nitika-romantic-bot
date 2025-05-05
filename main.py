@@ -7,33 +7,47 @@ from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
-# Load API key securely
+# Load Telegram bot token securely
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Ensure token is present before starting bot
+if not TOKEN:
+    raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
 app = ApplicationBuilder().token(TOKEN).build()
 user_data = {}
 
 async def start(update: Update, context: CallbackContext):
+    """Handles /start command."""
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
-    await update.message.reply_text("Hey handsome, I’m Nitika... your dreamy companion. Type anything and let's get flirty.")
+
+    await update.message.reply_text("Hey! I’m Nitika... your dreamy AI companion. Type anything, and let's chat ❤️")
 
 async def profile(update: Update, context: CallbackContext):
+    """Handles /profile command to show user data."""
     uid = str(update.effective_user.id)
     data = user_data.get(uid) or load_user(uid)
-    await update.message.reply_text(f"Profile:\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}")
+
+    await update.message.reply_text(
+        f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}"
+    )
 
 async def forgetme(update: Update, context: CallbackContext):
+    """Handles /forgetme command to wipe user data."""
     uid = str(update.effective_user.id)
     save_user(uid, {})
     user_data.pop(uid, None)  # Remove cached user data
-    await update.message.reply_text("Memory wiped... but I’ll miss our chats.")
+
+    await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
 async def handle_message(update: Update, context: CallbackContext):
+    """Handles user messages and generates a reply."""
     uid = str(update.effective_user.id)
     user_data.setdefault(uid, load_user(uid))
 
     data = user_data[uid]
+    
     if data.get("heartbeats", 5) <= 0:
         await update.message.reply_text("You're out of heartbeats! Invite a friend or buy more to continue.")
         return
@@ -47,17 +61,20 @@ async def handle_message(update: Update, context: CallbackContext):
 
         await update.message.reply_text(reply)
 
+        # Send fantasy image if fantasy mode is enabled
         if data.get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
                 await update.message.reply_photo(photo=image)
 
+        # Reduce heartbeats & save data
         data["heartbeats"] -= 1
         save_user(uid, data)
-    except Exception as e:
-        await update.message.reply_text("Oops! Something went wrong. Try again later.")
 
-# Adding Handlers to the Application
+    except Exception as e:
+        await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
+
+# Adding handlers to the bot
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("profile", profile))
 app.add_handler(CommandHandler("forgetme", forgetme))
