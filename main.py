@@ -76,9 +76,8 @@ async def handle_message(update: Update, context: CallbackContext):
         reply = await generate_reply(uid, user_input, data)
         logging.info(f"Generated Reply: {reply}")
 
-        # Trim overly long replies
-        reply = trim_reply(reply)
-        logging.info(f"Trimmed Reply: {reply}")
+        if not reply or reply.strip() == "":
+            raise ValueError("Generated reply is empty or invalid.")
 
         # Send the reply to the user
         await update.message.reply_text(reply)
@@ -97,17 +96,12 @@ async def handle_message(update: Update, context: CallbackContext):
         save_user(uid, data)
         logging.info(f"User {uid} data saved successfully. Remaining heartbeats: {data['heartbeats']}")
 
+    except ValueError as ve:
+        # Handle specific value errors
+        logging.warning(f"ValueError in handle_message for user {uid}: {ve}")
+        await update.message.reply_text("Sorry, I couldn't process your input. Please try again!")
+
     except Exception as e:
         # Log detailed exception info
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
-
-# Adding handlers
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("profile", profile))
-app.add_handler(CommandHandler("forgetme", forgetme))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-# Start bot with polling (Updater is REMOVED)
-print("Bot is running...")
-app.run_polling()
