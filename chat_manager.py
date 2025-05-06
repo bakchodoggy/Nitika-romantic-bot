@@ -1,28 +1,26 @@
 import logging
-import openai  # Ensure the OpenAI library is installed
+import openai
 import os
 
-# Configure OpenAI client to use OpenRouter endpoint
+# Set up OpenAI client for OpenRouter
 openai.api_key = os.getenv("OPENROUTER_API_KEY")
 openai.api_base = "https://openrouter.ai/api/v1"
 
 async def generate_reply(uid, user_input, user_data):
-    """Generates a reply using OpenRouter API and AI-based logic."""
+    """Generates a reply using OpenRouter API."""
     try:
         if not user_input.strip():
             return "I couldn't understand that. Could you please rephrase?"
 
-        # You can adjust the prompt as needed for your bot
         prompt = (
             "You are a friendly and romantic chatbot named Nitika. "
             "Always respond in a loving and charming way. "
             f"User said: {user_input}"
         )
 
-        # Call OpenRouter API via OpenAI library
         response = openai.ChatCompletion.create(
-            # Use an OpenRouter model name, for example:
-            model="openrouter/anthropic/claude-3-haiku",  # Change to your preferred model
+            # Use an OpenRouter model name! Example:
+            model="openrouter/anthropic/claude-3-haiku",  # replace with your preferred model
             messages=[
                 {"role": "system", "content": "You are a romantic chatbot."},
                 {"role": "user", "content": prompt},
@@ -31,7 +29,6 @@ async def generate_reply(uid, user_input, user_data):
             temperature=0.8,
         )
 
-        # Extract the AI-generated reply
         reply = response["choices"][0]["message"]["content"].strip()
         return reply
 
