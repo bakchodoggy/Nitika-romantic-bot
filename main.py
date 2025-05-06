@@ -20,8 +20,8 @@ if not TOKEN:
 app = ApplicationBuilder().token(TOKEN).build()
 user_data = {}
 
-# Add your admin Telegram user ID here (replace with your actual admin ID)
-ADMIN_USER_ID = 123456789  # <-- replace with your Telegram user ID
+# Set your Telegram user ID as admin
+ADMIN_USER_ID = 1444093362  # <-- Your Telegram user ID
 
 async def start(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
@@ -89,6 +89,9 @@ async def resetme(update: Update, context: CallbackContext):
     save_user(uid, user_data[uid])
     await update.message.reply_text("Your heartbeats have been reset! ❤️")
 
+async def myid(update: Update, context: CallbackContext):
+    await update.message.reply_text(f"Your Telegram user ID is: {update.effective_user.id}")
+
 async def handle_message(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     # Load or initialize user data
@@ -103,7 +106,7 @@ async def handle_message(update: Update, context: CallbackContext):
 
     if data.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
-            "You're out of heartbeats! Invite a friend or buy more to continue."
+            "You're out of heartbeats! Invite a friend or buy more to continue.\n\nIf you are the admin, use /resetme to restore your heartbeats."
         )
         return
 
@@ -150,6 +153,7 @@ def main():
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("forgetme", forgetme))
     app.add_handler(CommandHandler("resetme", resetme))
+    app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling()
