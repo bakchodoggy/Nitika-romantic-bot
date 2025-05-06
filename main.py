@@ -58,13 +58,26 @@ async def mood_callback(update: Update, context: CallbackContext):
         "mood_enchanted": "🧚‍♀️ Enchanted Encounter",
         "mood_candlelit": "🕯️ Candlelit Mystery"
     }
+    scenario_map = {
+        "mood_whispering": "Step into a world of gentle whispers and magical dreams.",
+        "mood_night": "A mysterious night awaits—romance under the moonlight.",
+        "mood_forest": "You meet a mysterious stranger deep in an enchanted forest.",
+        "mood_roommate": "Your seductive roommate is full of playful charm.",
+        "mood_dreamy": "Experience a love that's dreamy, soft, and surreal.",
+        "mood_fiery": "Passion burns hot—are you ready for a bold encounter?",
+        "mood_enchanted": "An encounter with a magical being in a fairy-tale world.",
+        "mood_candlelit": "A candlelit room sets the mood for mystery and romance."
+    }
     mood_choice = mood_map.get(query.data, "💫 Whispering Fantasy")
-    # Save mood to user data
+    scenario = scenario_map.get(query.data, "")
+
     user_data[uid] = load_user(uid) or {}
     user_data[uid]["mood"] = mood_choice
     save_user(uid, user_data[uid])
 
-    await query.edit_message_text(f"Mood set to: {mood_choice}!\nNow type anything and let's chat ❤️")
+    await query.edit_message_text(
+        f"Mood set to: {mood_choice}!\n\n{scenario}\n\nNow type anything and let's chat ❤️"
+    )
 
 async def profile(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
