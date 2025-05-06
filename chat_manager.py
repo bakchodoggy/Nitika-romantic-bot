@@ -2,7 +2,7 @@ import logging
 import openai
 import os
 
-# Set up OpenAI client for OpenRouter
+# Configure OpenAI client for OpenRouter
 openai.api_key = os.getenv("OPENROUTER_API_KEY")
 openai.api_base = "https://openrouter.ai/api/v1"
 
@@ -19,7 +19,7 @@ async def generate_reply(uid, user_input, user_data):
         )
 
         response = openai.ChatCompletion.create(
-            model="openrouter/mistralai/mixtral-8x7b-instruct",  # Use Mixtral 8x7B Instruct
+            model="mistralai/mixtral-8x7b-instruct",  # Correct model name
             messages=[
                 {"role": "system", "content": "You are a romantic chatbot."},
                 {"role": "user", "content": prompt},
@@ -33,4 +33,5 @@ async def generate_reply(uid, user_input, user_data):
 
     except Exception as e:
         logging.error(f"Error in generate_reply for user {uid}: {e}", exc_info=True)
-        return "I'm having trouble responding romantically right now. Please try again!"
+        # For debugging, return the error to Telegram (remove after testing)
+        return f"DEBUG: {e}"
