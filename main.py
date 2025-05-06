@@ -11,6 +11,11 @@ from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
+from keep_alive import keep_alive  # <<---- ADD THIS LINE
+
+# Start the keep-alive server for 24/7 uptime
+keep_alive()  # <<---- ADD THIS LINE
+
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 
@@ -105,3 +110,16 @@ async def handle_message(update: Update, context: CallbackContext):
         # Log detailed exception info
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
+
+def main():
+    # Register handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("profile", profile))
+    app.add_handler(CommandHandler("forgetme", forgetme))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+
+    # Run the bot
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
