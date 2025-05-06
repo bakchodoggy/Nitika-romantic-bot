@@ -20,21 +20,27 @@ if not TOKEN:
 app = ApplicationBuilder().token(TOKEN).build()
 user_data = {}
 
+# Add your admin Telegram user ID here (replace with your actual admin ID)
+ADMIN_USER_ID = 123456789  # <-- replace with your Telegram user ID
+
 async def start(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
 
-    # Define mood options
     mood_keyboard = [
-        [InlineKeyboardButton("Romantic", callback_data="mood_romantic"),
-         InlineKeyboardButton("Flirty", callback_data="mood_flirty")],
-        [InlineKeyboardButton("Friendly", callback_data="mood_friendly"),
-         InlineKeyboardButton("Funny", callback_data="mood_funny")]
+        [InlineKeyboardButton("💫 Whispering Fantasy", callback_data="mood_whispering")],
+        [InlineKeyboardButton("🌙 Night Fantasy", callback_data="mood_night")],
+        [InlineKeyboardButton("🌲 Stranger in Forest", callback_data="mood_forest")],
+        [InlineKeyboardButton("😈 Seductive Roommate", callback_data="mood_roommate")],
+        [InlineKeyboardButton("🦄 Dreamy Lover", callback_data="mood_dreamy")],
+        [InlineKeyboardButton("🔥 Fiery Passion", callback_data="mood_fiery")],
+        [InlineKeyboardButton("🧚‍♀️ Enchanted Encounter", callback_data="mood_enchanted")],
+        [InlineKeyboardButton("🕯️ Candlelit Mystery", callback_data="mood_candlelit")],
     ]
     reply_markup = InlineKeyboardMarkup(mood_keyboard)
 
     await update.message.reply_text(
-        "Hey! I’m Nitika... your dreamy AI companion. Choose a mood to begin:",
+        "Hey! I’m Nitika... your dreamy AI companion. Choose your fantasy mood to begin:",
         reply_markup=reply_markup
     )
 
@@ -43,12 +49,16 @@ async def mood_callback(update: Update, context: CallbackContext):
     await query.answer()
     uid = str(query.from_user.id)
     mood_map = {
-        "mood_romantic": "Romantic",
-        "mood_flirty": "Flirty",
-        "mood_friendly": "Friendly",
-        "mood_funny": "Funny"
+        "mood_whispering": "💫 Whispering Fantasy",
+        "mood_night": "🌙 Night Fantasy",
+        "mood_forest": "🌲 Stranger in Forest",
+        "mood_roommate": "😈 Seductive Roommate",
+        "mood_dreamy": "🦄 Dreamy Lover",
+        "mood_fiery": "🔥 Fiery Passion",
+        "mood_enchanted": "🧚‍♀️ Enchanted Encounter",
+        "mood_candlelit": "🕯️ Candlelit Mystery"
     }
-    mood_choice = mood_map.get(query.data, "Romantic")
+    mood_choice = mood_map.get(query.data, "💫 Whispering Fantasy")
     # Save mood to user data
     user_data[uid] = load_user(uid) or {}
     user_data[uid]["mood"] = mood_choice
@@ -69,15 +79,29 @@ async def forgetme(update: Update, context: CallbackContext):
     user_data.pop(uid, None)
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
+async def resetme(update: Update, context: CallbackContext):
+    uid = str(update.effective_user.id)
+    if update.effective_user.id != ADMIN_USER_ID:
+        await update.message.reply_text("You are not authorized to use this command.")
+        return
+    user_data[uid] = load_user(uid) or {}
+    user_data[uid]["heartbeats"] = 5  # or whatever your default is
+    save_user(uid, user_data[uid])
+    await update.message.reply_text("Your heartbeats have been reset! ❤️")
+
 async def handle_message(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     # Load or initialize user data
     user_data.setdefault(uid, load_user(uid) or {})
     data = user_data[uid]
-    if "heartbeats" not in data:
-        data["heartbeats"] = 5  # Default number of heartbeats
 
-    if data["heartbeats"] <= 0:
+    # Automatic heartbeat reset for admin
+    if update.effective_user.id == ADMIN_USER_ID and data.get("heartbeats", 0) <= 0:
+        data["heartbeats"] = 5  # or your preferred default
+        save_user(uid, data)
+        await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
+
+    if data.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue."
         )
@@ -125,6 +149,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("forgetme", forgetme))
+    app.add_handler(CommandHandler("resetme", resetme))
     app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling()
