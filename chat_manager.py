@@ -1,4 +1,8 @@
 import logging
+import openai  # Example AI library
+
+# Configure OpenAI API key
+openai.api_key = "your_openai_api_key"
 
 async def generate_reply(uid, user_input, user_data):
     """Generates a reply based on user input."""
@@ -6,18 +10,14 @@ async def generate_reply(uid, user_input, user_data):
         if not user_input.strip():
             return "I couldn't understand that. Could you rephrase it?"
 
-        # Example logic for generating a meaningful reply
-        responses = [
-            "Tell me more about that!",
-            "That sounds interesting. Go on!",
-            "How do you feel about that?",
-            "I'm here to listen. What else is on your mind?",
-            "Can you give me more details?"
-        ]
+        # Use AI to generate a reply
+        response = openai.Completion.create(
+            engine="text-davinci-003",  # Specify the AI model
+            prompt=f"You are a helpful assistant. User said: {user_input}",
+            max_tokens=150
+        )
 
-        # Generate a random response (replace this with AI logic if needed)
-        import random
-        reply = random.choice(responses)
+        reply = response.choices[0].text.strip()
         return reply
 
     except Exception as e:
