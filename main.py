@@ -1,25 +1,18 @@
-import os
-import asyncio
-import logging
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    filters, CallbackContext
-)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
 from chat_manager import generate_reply
 from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
-
 from keep_alive import keep_alive
 
-# Start the keep-alive server for 24/7 uptime
 keep_alive()
 
-# Logging setup
+import os
+import logging
+
 logging.basicConfig(level=logging.INFO)
 
-# Load Telegram bot token securely
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
@@ -30,15 +23,44 @@ user_data = {}
 async def start(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
+
+    # Define mood options
+    mood_keyboard = [
+        [InlineKeyboardButton("Romantic", callback_data="mood_romantic"),
+         InlineKeyboardButton("Flirty", callback_data="mood_flirty")],
+        [InlineKeyboardButton("Friendly", callback_data="mood_friendly"),
+         InlineKeyboardButton("Funny", callback_data="mood_funny")]
+    ]
+    reply_markup = InlineKeyboardMarkup(mood_keyboard)
+
     await update.message.reply_text(
-        "Hey! I’m Nitika... your dreamy AI companion. Type anything, and let's chat ❤️"
+        "Hey! I’m Nitika... your dreamy AI companion. Choose a mood to begin:",
+        reply_markup=reply_markup
     )
+
+async def mood_callback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+    uid = str(query.from_user.id)
+    mood_map = {
+        "mood_romantic": "Romantic",
+        "mood_flirty": "Flirty",
+        "mood_friendly": "Friendly",
+        "mood_funny": "Funny"
+    }
+    mood_choice = mood_map.get(query.data, "Romantic")
+    # Save mood to user data
+    user_data[uid] = load_user(uid) or {}
+    user_data[uid]["mood"] = mood_choice
+    save_user(uid, user_data[uid])
+
+    await query.edit_message_text(f"Mood set to: {mood_choice}!\nNow type anything and let's chat ❤️")
 
 async def profile(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     data = user_data.get(uid) or load_user(uid) or {}
     await update.message.reply_text(
-        f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}"
+        f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}\nMood: {data.get('mood', 'Not set')}"
     )
 
 async def forgetme(update: Update, context: CallbackContext):
@@ -103,6 +125,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("forgetme", forgetme))
+    app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling()
 
