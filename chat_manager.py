@@ -7,7 +7,7 @@ openai.api_key = os.getenv("OPENROUTER_API_KEY")
 openai.api_base = "https://openrouter.ai/api/v1"
 
 async def generate_reply(uid, user_input, user_data):
-    """Generates a reply using OpenRouter API."""
+    """Generates a reply using OpenRouter API with Mixtral 8x7B Instruct."""
     try:
         if not user_input.strip():
             return "I couldn't understand that. Could you please rephrase?"
@@ -19,8 +19,7 @@ async def generate_reply(uid, user_input, user_data):
         )
 
         response = openai.ChatCompletion.create(
-            # Use an OpenRouter model name! Example:
-            model="openrouter/anthropic/claude-3-haiku",  # replace with your preferred model
+            model="openrouter/mistralai/mixtral-8x7b-instruct",  # Use Mixtral 8x7B Instruct
             messages=[
                 {"role": "system", "content": "You are a romantic chatbot."},
                 {"role": "user", "content": prompt},
