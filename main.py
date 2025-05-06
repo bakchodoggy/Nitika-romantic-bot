@@ -97,8 +97,7 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("Sorry, I couldn't process your input. Please try again!")
     except Exception as e:
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
-        # Show the real error in Telegram temporarily (remove or comment out in production)
-        await update.message.reply_text(f"DEBUG: {e}")
+        await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
 def main():
     app.add_handler(CommandHandler("start", start))
