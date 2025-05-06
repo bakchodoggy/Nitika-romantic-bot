@@ -55,7 +55,7 @@ async def forgetme(update: Update, context: CallbackContext):
 async def handle_message(update: Update, context: CallbackContext):
     """Handles user messages and generates a reply."""
     uid = str(update.effective_user.id)
-    user_data.setdefault(uid, load_user(uid))
+    user_data.setdefault(uid, load_user(uid))  # Load user data
     data = user_data[uid]
 
     if data.get("heartbeats", 5) <= 0:
@@ -64,9 +64,11 @@ async def handle_message(update: Update, context: CallbackContext):
         )
         return
 
+    # Show typing action
     await send_typing_action(update, context)
 
     try:
+        # Log user input
         user_input = update.message.text
         logging.info(f"User Input from {uid}: {user_input}")
 
@@ -76,17 +78,24 @@ async def handle_message(update: Update, context: CallbackContext):
 
         # Trim overly long replies
         reply = trim_reply(reply)
+        logging.info(f"Trimmed Reply: {reply}")
+
+        # Send the reply to the user
         await update.message.reply_text(reply)
 
         # Handle fantasy mode image if enabled
         if data.get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
+                logging.info(f"Fantasy Image URL: {image}")
                 await update.message.reply_photo(photo=image)
+            else:
+                logging.warning(f"No fantasy image returned for user {uid}.")
 
-        # Deduct heartbeats and save user data
+        # Deduct a heartbeat and save user data
         data["heartbeats"] -= 1
         save_user(uid, data)
+        logging.info(f"User {uid} data saved successfully. Remaining heartbeats: {data['heartbeats']}")
 
     except Exception as e:
         # Log detailed exception info
