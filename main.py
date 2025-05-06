@@ -11,83 +11,72 @@ from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
-from keep_alive import keep_alive  # <<---- ADD THIS LINE
+from keep_alive import keep_alive
 
 # Start the keep-alive server for 24/7 uptime
-keep_alive()  # <<---- ADD THIS LINE
+keep_alive()
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 
 # Load Telegram bot token securely
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# Ensure token is set
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
-# Create application (NO Updater object)
 app = ApplicationBuilder().token(TOKEN).build()
-
 user_data = {}
 
 async def start(update: Update, context: CallbackContext):
-    """Handles /start command."""
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
-
     await update.message.reply_text(
         "Hey! I’m Nitika... your dreamy AI companion. Type anything, and let's chat ❤️"
     )
 
 async def profile(update: Update, context: CallbackContext):
-    """Handles /profile command to show user data."""
     uid = str(update.effective_user.id)
-    data = user_data.get(uid) or load_user(uid)
-
+    data = user_data.get(uid) or load_user(uid) or {}
     await update.message.reply_text(
         f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}"
     )
 
 async def forgetme(update: Update, context: CallbackContext):
-    """Handles /forgetme command to wipe user data."""
     uid = str(update.effective_user.id)
     save_user(uid, {})
     user_data.pop(uid, None)
-
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
 async def handle_message(update: Update, context: CallbackContext):
-    """Handles user messages and generates a reply."""
     uid = str(update.effective_user.id)
-    user_data.setdefault(uid, load_user(uid))  # Load user data
+    # Load or initialize user data
+    user_data.setdefault(uid, load_user(uid) or {})
     data = user_data[uid]
+    if "heartbeats" not in data:
+        data["heartbeats"] = 5  # Default number of heartbeats
 
-    if data.get("heartbeats", 5) <= 0:
+    if data["heartbeats"] <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue."
         )
         return
 
-    # Show typing action
     await send_typing_action(update, context)
 
     try:
-        # Log user input
         user_input = update.message.text
         logging.info(f"User Input from {uid}: {user_input}")
 
-        # Generate reply
         reply = await generate_reply(uid, user_input, data)
         logging.info(f"Generated Reply: {reply}")
 
         if not reply or reply.strip() == "":
             raise ValueError("Generated reply is empty or invalid.")
 
-        # Send the reply to the user
+        # Send the AI reply
         await update.message.reply_text(reply)
 
-        # Handle fantasy mode image if enabled
+        # Fantasy mode (optional image)
         if data.get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
@@ -99,26 +88,23 @@ async def handle_message(update: Update, context: CallbackContext):
         # Deduct a heartbeat and save user data
         data["heartbeats"] -= 1
         save_user(uid, data)
-        logging.info(f"User {uid} data saved successfully. Remaining heartbeats: {data['heartbeats']}")
+        logging.info(
+            f"User {uid} data saved successfully. Remaining heartbeats: {data['heartbeats']}"
+        )
 
     except ValueError as ve:
-        # Handle specific value errors
         logging.warning(f"ValueError in handle_message for user {uid}: {ve}")
         await update.message.reply_text("Sorry, I couldn't process your input. Please try again!")
-
     except Exception as e:
-        # Log detailed exception info
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
-        await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
+        # Show the real error in Telegram temporarily (remove or comment out in production)
+        await update.message.reply_text(f"DEBUG: {e}")
 
 def main():
-    # Register handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("profile", profile))
     app.add_handler(CommandHandler("forgetme", forgetme))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-
-    # Run the bot
     app.run_polling()
 
 if __name__ == "__main__":
