@@ -1,25 +1,34 @@
 import logging
-import openai  # Example AI library
-
-# Configure OpenAI API key
-openai.api_key = "your_openai_api_key"
+import openai  # Ensure the OpenAI library is installed
 
 async def generate_reply(uid, user_input, user_data):
-    """Generates a reply based on user input."""
+    """Generates a reply using OpenAI's API and AI-based logic."""
     try:
         if not user_input.strip():
-            return "I couldn't understand that. Could you rephrase it?"
+            return "I couldn't understand that. Could you please rephrase?"
 
-        # Use AI to generate a reply
-        response = openai.Completion.create(
-            engine="text-davinci-003",  # Specify the AI model
-            prompt=f"You are a helpful assistant. User said: {user_input}",
-            max_tokens=150
+        # Define the prompt to instruct the AI model
+        prompt = (
+            f"You are a friendly and romantic chatbot named Nitika. "
+            f"Always respond in a loving and charming way. "
+            f"User said: {user_input}"
         )
 
-        reply = response.choices[0].text.strip()
+        # Call OpenAI API to generate a reply
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # Use OpenAI's GPT model (adjust as needed)
+            messages=[
+                {"role": "system", "content": "You are a romantic chatbot."},
+                {"role": "user", "content": user_input},
+            ],
+            max_tokens=150,  # Limit the response length
+            temperature=0.8,  # Control creativity (higher = more creative)
+        )
+
+        # Extract the AI-generated reply
+        reply = response["choices"][0]["message"]["content"].strip()
         return reply
 
     except Exception as e:
         logging.error(f"Error in generate_reply for user {uid}: {e}", exc_info=True)
-        return "I'm having trouble understanding. Please try again!"
+        return "I'm having trouble responding romantically right now. Please try again!"
