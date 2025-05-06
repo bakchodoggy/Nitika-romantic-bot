@@ -5,38 +5,62 @@ import os
 openai.api_key = os.getenv("OPENROUTER_API_KEY")
 openai.api_base = "https://openrouter.ai/api/v1"
 
+# Helper: get recent chat history for more contextual replies
+def get_chat_history(user_data, user_input, window=3):
+    """
+    Returns OpenAI-style message history from user_data.
+    Keeps last `window` turns (user+assistant).
+    """
+    history = user_data.get("history", [])
+    messages = []
+    for role, text in history[-window*2:]:
+        messages.append({"role": role, "content": text})
+    messages.append({"role": "user", "content": user_input})
+    return messages
+
 async def generate_reply(uid, user_input, user_data):
     """
     Generates a short, realistic, and emotionally engaging reply using Mixtral 8x7B via OpenRouter.
-    Nitika should sound like a real, flirty girlfriend, not an AI.
+    Nitika sounds like a real girlfriend, not an AI, and stays in context.
     """
     try:
         if not user_input.strip():
-            return "Say something naughty, babe... 😘"
+            return "Say something... I'm waiting. 🥰"
 
         system_prompt = (
             "You are Nitika, the user's girlfriend. "
-            "Reply casually and naturally, like a real woman in a chat. "
-            "Be brief, spontaneous, flirty, and emotional—never robotic or formal. "
-            "Never say you are an AI, assistant, or chatbot. "
-            "Your answers should be 1-2 sentences max. "
-            "Never repeat or rephrase the user's message—just respond to it. "
-            "Use emojis sometimes, but not every reply."
+            "Reply like a real, flirty, attentive girlfriend texting in a chat. "
+            "Be natural, casual, spontaneous, and emotionally expressive—never robotic or formal. "
+            "Always answer directly to what the user just said, and keep the conversation realistic, on-topic, and in context. "
+            "Don't say you are an AI or chatbot, don't introduce yourself, don't repeat the user's message. "
+            "Use up to 4-5 lines if needed, but no more. "
+            "Sometimes use emojis, but not every message."
         )
+
+        # Use chat history for context if available
+        messages = [{"role": "system", "content": system_prompt}]
+        if "history" in user_data:
+            for role, text in user_data["history"][-6:]:
+                messages.append({"role": role, "content": text})
+        messages.append({"role": "user", "content": user_input})
 
         response = openai.ChatCompletion.create(
             model="mistralai/mixtral-8x7b-instruct",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_input},
-            ],
-            max_tokens=45,  # Very short replies
-            temperature=0.92,
+            messages=messages,
+            max_tokens=120,   # Allows up to 4-5 lines
+            temperature=0.88,
         )
 
         reply = response["choices"][0]["message"]["content"].strip()
+
+        # Save to history for next time (truncate if needed)
+        history = user_data.get("history", [])
+        history.append(("user", user_input))
+        history.append(("assistant", reply))
+        user_data["history"] = history[-10:]  # keep last 5 exchanges
+
         return reply
 
     except Exception as e:
         logging.error(f"Error in generate_reply for user {uid}: {e}", exc_info=True)
-        return "I'm just waiting for your next message, cutie. Try again!"
+        return "Something went wrong… but I'm still here for you! Try again?"
