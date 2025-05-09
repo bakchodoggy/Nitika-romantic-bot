@@ -1,0 +1,19 @@
+name: Make start.sh executable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix-permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set start.sh as executable
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          chmod +x start.sh
+          git add start.sh
+          git commit -m "Set start.sh as executable via GitHub Actions" || echo "No changes to commit"
+          git push
