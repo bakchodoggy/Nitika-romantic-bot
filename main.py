@@ -1,11 +1,3 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, CallbackContext
-from chat_manager import generate_reply
-from data_manager import load_user, save_user
-from fantasy_manager import get_random_fantasy_image
-from utils import send_typing_action, trim_reply
-from keep_alive import keep_alive
-
 import os
 import logging
 import hmac
@@ -13,13 +5,19 @@ import hashlib
 import json
 from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import uvicorn
-import threading
 
-keep_alive()
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+
+import asyncio
+
+from chat_manager import generate_reply
+from data_manager import load_user, save_user
+from fantasy_manager import get_random_fantasy_image
+from utils import send_typing_action, trim_reply
 
 # ---- CONFIG ----
 logging.basicConfig(level=logging.INFO)
@@ -28,13 +26,13 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
-# CORS: Use your Vercel Mini App's URL!
 ALLOWED_ORIGINS = [
     "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
 ]
 
-# Admin Telegram user ID
 ADMIN_USER_ID = 1444093362
+
+user_data = {}
 
 # ---- FASTAPI APP ----
 app = FastAPI()
@@ -47,12 +45,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---- TELEGRAM BOT SETUP ----
-tg_app = ApplicationBuilder().token(TOKEN).build()
-user_data = {}
+# ---- HEALTH CHECK ROUTE (replaces keep_alive) ----
+@app.get("/")
+async def health():
+    return {"status": "ok"}
 
 # ---- TELEGRAM HANDLERS ----
-async def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
 
@@ -72,7 +71,7 @@ async def start(update: Update, context: CallbackContext):
         reply_markup=reply_markup
     )
 
-async def mood_callback(update: Update, context: CallbackContext):
+async def mood_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     uid = str(query.from_user.id)
@@ -107,20 +106,20 @@ async def mood_callback(update: Update, context: CallbackContext):
         f"Mood set to: {mood_choice}!\n\n{scenario}\n\nNow type anything and let's chat ❤️"
     )
 
-async def profile(update: Update, context: CallbackContext):
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     data = user_data.get(uid) or load_user(uid) or {}
     await update.message.reply_text(
         f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}\nMood: {data.get('mood', 'Not set')}"
     )
 
-async def forgetme(update: Update, context: CallbackContext):
+async def forgetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     save_user(uid, {})
     user_data.pop(uid, None)
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
-async def resetme(update: Update, context: CallbackContext):
+async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     if update.effective_user.id != ADMIN_USER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
@@ -130,10 +129,10 @@ async def resetme(update: Update, context: CallbackContext):
     save_user(uid, user_data[uid])
     await update.message.reply_text("Your heartbeats have been reset! ❤️")
 
-async def myid(update: Update, context: CallbackContext):
+async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Your Telegram user ID is: {update.effective_user.id}")
 
-async def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     # Load or initialize user data
     user_data.setdefault(uid, load_user(uid) or {})
@@ -189,16 +188,6 @@ async def handle_message(update: Update, context: CallbackContext):
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
-def run_telegram_bot():
-    tg_app.add_handler(CommandHandler("start", start))
-    tg_app.add_handler(CommandHandler("profile", profile))
-    tg_app.add_handler(CommandHandler("forgetme", forgetme))
-    tg_app.add_handler(CommandHandler("resetme", resetme))
-    tg_app.add_handler(CommandHandler("myid", myid))
-    tg_app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
-    tg_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    tg_app.run_polling()
-
 # ---- TELEGRAM MINI APP API ENDPOINT ----
 class UserRequest(BaseModel):
     telegram_id: int
@@ -236,9 +225,22 @@ async def get_user_data(req: UserRequest):
         "subscription_expires": data.get("subscription_expires", "2025-12-31")
     }
 
-# ---- RUN BOTH BOT AND FASTAPI ----
+# ---- FASTAPI STARTUP EVENT: start bot ----
+@app.on_event("startup")
+async def on_startup():
+    # Build the bot application and register handlers
+    tg_app = ApplicationBuilder().token(TOKEN).build()
+    tg_app.add_handler(CommandHandler("start", start))
+    tg_app.add_handler(CommandHandler("profile", profile))
+    tg_app.add_handler(CommandHandler("forgetme", forgetme))
+    tg_app.add_handler(CommandHandler("resetme", resetme))
+    tg_app.add_handler(CommandHandler("myid", myid))
+    tg_app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
+    tg_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    # Run the bot polling in the background
+    asyncio.create_task(tg_app.run_polling())
+
+# ---- RUN APP ----
 if __name__ == "__main__":
-    # Start bot in a thread
-    threading.Thread(target=run_telegram_bot, daemon=True).start()
-    # Start FastAPI server
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
