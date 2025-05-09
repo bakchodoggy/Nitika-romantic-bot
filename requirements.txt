@@ -1,5 +1,11 @@
 python-telegram-bot==20.8
 Flask==2.3.3
-requests==2.31.0  # Adding a version for stability
-python-dotenv==1.0.1  # For managing API keys securely
-openai==0.27.7  # Add the OpenAI library for AI-based responses
+requests==2.31.0
+python-dotenv==1.0.1
+openai==0.27.7
+
+# Added for FastAPI backend/API support:
+fastapi
+uvicorn
+
+# (Optionally, keep any other dependencies you use for your project)
