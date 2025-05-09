@@ -28,9 +28,9 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
-# CORS: Replace with your Vercel app's URL!
+# CORS: Use your Vercel Mini App's URL!
 ALLOWED_ORIGINS = [
-    "https://your-vercel-app.vercel.app",  # <-- CHANGE THIS to your actual Vercel deployment URL
+    "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
 ]
 
 # Admin Telegram user ID
