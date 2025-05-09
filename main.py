@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---- HEALTH CHECK ROUTE (replaces keep_alive) ----
+# ---- HEALTH CHECK ROUTE ----
 @app.get("/")
 async def health():
     return {"status": "ok"}
@@ -228,7 +228,6 @@ async def get_user_data(req: UserRequest):
 # ---- FASTAPI STARTUP EVENT: start bot ----
 @app.on_event("startup")
 async def on_startup():
-    # Build the bot application and register handlers
     tg_app = ApplicationBuilder().token(TOKEN).build()
     tg_app.add_handler(CommandHandler("start", start))
     tg_app.add_handler(CommandHandler("profile", profile))
@@ -237,10 +236,8 @@ async def on_startup():
     tg_app.add_handler(CommandHandler("myid", myid))
     tg_app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
     tg_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    # Run the bot polling in the background
     asyncio.create_task(tg_app.run_polling())
 
-# ---- RUN APP ----
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
