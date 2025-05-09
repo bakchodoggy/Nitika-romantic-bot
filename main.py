@@ -6,23 +6,52 @@ from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 from keep_alive import keep_alive
 
-keep_alive()
-
 import os
 import logging
+import hmac
+import hashlib
+import json
+from urllib.parse import parse_qsl
 
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import uvicorn
+import threading
+
+keep_alive()
+
+# ---- CONFIG ----
 logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Error: TELEGRAM_BOT_TOKEN is missing! Set it in environment variables.")
 
-app = ApplicationBuilder().token(TOKEN).build()
+# CORS: Replace with your Vercel app's URL!
+ALLOWED_ORIGINS = [
+    "https://your-vercel-app.vercel.app",  # <-- CHANGE THIS to your actual Vercel deployment URL
+]
+
+# Admin Telegram user ID
+ADMIN_USER_ID = 1444093362
+
+# ---- FASTAPI APP ----
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---- TELEGRAM BOT SETUP ----
+tg_app = ApplicationBuilder().token(TOKEN).build()
 user_data = {}
 
-# Set your Telegram user ID as admin
-ADMIN_USER_ID = 1444093362  # <-- Your Telegram user ID
-
+# ---- TELEGRAM HANDLERS ----
 async def start(update: Update, context: CallbackContext):
     uid = str(update.effective_user.id)
     user_data[uid] = load_user(uid) or {}
@@ -38,7 +67,6 @@ async def start(update: Update, context: CallbackContext):
         [InlineKeyboardButton("🕯️ Candlelit Mystery", callback_data="mood_candlelit")],
     ]
     reply_markup = InlineKeyboardMarkup(mood_keyboard)
-
     await update.message.reply_text(
         "Hey! I’m Nitika... your dreamy AI companion. Choose your fantasy mood to begin:",
         reply_markup=reply_markup
@@ -161,15 +189,56 @@ async def handle_message(update: Update, context: CallbackContext):
         logging.error(f"Error in handle_message for user {uid}: {e}", exc_info=True)
         await update.message.reply_text("Oops! Something went wrong. Try again later 💖")
 
-def main():
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("profile", profile))
-    app.add_handler(CommandHandler("forgetme", forgetme))
-    app.add_handler(CommandHandler("resetme", resetme))
-    app.add_handler(CommandHandler("myid", myid))
-    app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    app.run_polling()
+def run_telegram_bot():
+    tg_app.add_handler(CommandHandler("start", start))
+    tg_app.add_handler(CommandHandler("profile", profile))
+    tg_app.add_handler(CommandHandler("forgetme", forgetme))
+    tg_app.add_handler(CommandHandler("resetme", resetme))
+    tg_app.add_handler(CommandHandler("myid", myid))
+    tg_app.add_handler(CallbackQueryHandler(mood_callback, pattern="^mood_"))
+    tg_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    tg_app.run_polling()
 
+# ---- TELEGRAM MINI APP API ENDPOINT ----
+class UserRequest(BaseModel):
+    telegram_id: int
+    hash: str  # Telegram Mini App's initData
+
+def check_telegram_init_data(init_data: str, bot_token: str) -> dict:
+    """Validate Telegram Mini App init data."""
+    try:
+        data = dict(parse_qsl(init_data, strict_parsing=True))
+        hash_check = data.pop("hash", None)
+        if not hash_check:
+            raise ValueError("Missing hash")
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+        secret = hashlib.sha256(bot_token.encode()).digest()
+        h = hmac.new(secret, data_check_string.encode(), digestmod=hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(h, hash_check):
+            raise ValueError("Hash check failed")
+        user = json.loads(data["user"])
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"Telegram validation error: {str(e)}")
+
+@app.post("/api/user")
+async def get_user_data(req: UserRequest):
+    # Validate Telegram
+    user = check_telegram_init_data(req.hash, TOKEN)
+    if user["id"] != req.telegram_id:
+        raise HTTPException(status_code=403, detail="User ID mismatch")
+    # Lookup user in your bot's user_data
+    uid = str(req.telegram_id)
+    data = user_data.get(uid) or load_user(uid) or {}
+    return {
+        "gems": data.get("gems", 100),
+        "heartbeats": data.get("heartbeats", 7),
+        "subscription_expires": data.get("subscription_expires", "2025-12-31")
+    }
+
+# ---- RUN BOTH BOT AND FASTAPI ----
 if __name__ == "__main__":
-    main()
+    # Start bot in a thread
+    threading.Thread(target=run_telegram_bot, daemon=True).start()
+    # Start FastAPI server
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
