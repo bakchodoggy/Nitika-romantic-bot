@@ -6,6 +6,7 @@ pydantic
 h11
 httpx
 starlette
-# If you use async/await in your OpenAI calls, include aiohttp
 aiohttp
-# Add anything extra your utils, data_manager, or fantasy_manager need here
+# Optionally, for logging flexibility (already in Python stdlib, but 3rd party logging if you use it elsewhere)
+# loguru
+# Add any other dependencies used in your custom modules below
