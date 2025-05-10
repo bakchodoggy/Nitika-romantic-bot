@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 python-telegram-bot
-openai
+openai==0.28.1
 pydantic
 h11
 httpx
