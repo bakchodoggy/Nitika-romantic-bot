@@ -1,4 +1,11 @@
 fastapi
 uvicorn
-python-telegram-bot==20.8
-# your other requirements...
+python-telegram-bot
+openai
+pydantic
+h11
+httpx
+starlette
+# If you use async/await in your OpenAI calls, include aiohttp
+aiohttp
+# Add anything extra your utils, data_manager, or fantasy_manager need here
