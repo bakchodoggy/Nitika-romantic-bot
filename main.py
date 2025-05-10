@@ -9,9 +9,9 @@ from urllib.parse import parse_qsl
 
 from data_manager import load_user, save_user
 
-# 1. CORS: Set your actual deployed domain here!
+# 1. CORS: Use your actual deployed Vercel frontend domain here!
 ALLOWED_ORIGINS = [
-    "https://your-vercel-app.vercel.app",  # <-- CHANGE THIS to your actual Vercel app URL
+    "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
 ]
 
 app = FastAPI()
@@ -100,7 +100,7 @@ async def buy_subscription(req: BuyRequest):
         raise HTTPException(status_code=403, detail="User ID mismatch")
     uid = str(req.telegram_id)
     data = load_user(uid) or {}
-    # Extend subscription by 30 days
+    # Extend subscription by 30 days per quantity
     if data.get("subscription_expires"):
         try:
             current_expiry = datetime.strptime(data["subscription_expires"], "%Y-%m-%d")
