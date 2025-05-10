@@ -6,10 +6,9 @@ import hmac
 import hashlib
 import json
 from urllib.parse import parse_qsl
-
 from data_manager import load_user, save_user
 
-# 1. CORS: Use your actual deployed Vercel frontend domain here!
+# Set your actual deployed Vercel frontend domain here!
 ALLOWED_ORIGINS = [
     "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
 ]
@@ -24,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Make sure this is set in your hosting environment
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Set this in your hosting environment
 
 class UserRequest(BaseModel):
     telegram_id: int
@@ -62,7 +61,6 @@ async def get_user_data(req: UserRequest):
         "subscription_expires": data.get("subscription_expires", "2025-12-31")
     }
 
-# Example endpoint to buy heartbeats (call from frontend after payment!)
 class BuyRequest(BaseModel):
     telegram_id: int
     hash: str
