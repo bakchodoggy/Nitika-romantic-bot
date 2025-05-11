@@ -17,15 +17,12 @@ aiohttp
 starlette
 h11
 
-# If you use logging enhancements, uncomment below:
+# Optional logging enhancements:
 # loguru
 
 # --- Add your own modules' dependencies here (if any) ---
-# For example, if you need Pillow for images:
-# pillow
+# pillow      # For image handling
+# aiosqlite   # For async sqlite
+# sqlalchemy  # For ORM
 
-# For file I/O or data storage (if you use them):
-# aiosqlite
-# sqlalchemy
-
-# Make sure all imports in your bot and API code have corresponding entries here!
+# Ensure every import in your code is listed here!
