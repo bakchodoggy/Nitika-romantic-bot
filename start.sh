@@ -1,4 +1,5 @@
 #!/bin/sh
-python3 main.py &
+# Start FastAPI API on port 8080 in the background
+uvicorn main:app --host 0.0.0.0 --port 8080 &
+# Start your Telegram bot runner
 python3 bot_runner.py
-# update
