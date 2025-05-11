@@ -9,7 +9,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
+        "https://gems-miniapp.vercel.app",
+        # Uncomment the next line to allow local development from your computer
         # "http://localhost:3000",
     ],
     allow_credentials=True,
