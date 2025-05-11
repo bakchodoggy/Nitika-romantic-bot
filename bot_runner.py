@@ -11,6 +11,9 @@ from utils import send_typing_action, trim_reply
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_USER_ID = 1444093362
 
+if not TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set!")
+
 logging.basicConfig(level=logging.INFO)
 
 user_data = {}
