@@ -2,13 +2,14 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --force-reinstall python-telegram-bot==20.8
 
+# Copy all code and scripts
 COPY . .
 
-COPY start.sh .
+# Ensure start.sh is executable
 RUN chmod +x start.sh
 
 CMD ["./start.sh"]
