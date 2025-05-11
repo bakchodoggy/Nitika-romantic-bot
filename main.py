@@ -2,26 +2,27 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from data_manager import load_user, save_user
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Your deployed frontend
         "https://gems-miniapp-mmf25pgny-sarvesh-beheras-projects.vercel.app",
-        # "http://localhost:3000",  # Uncomment for local testing
+        # Uncomment below for local testing
+        # "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Root endpoint for debugging/deployment check
 @app.get("/")
 def root():
     return {"status": "ok"}
 
-# Actual user info endpoint
 @app.post("/api/user")
 async def get_user(request: Request):
     data = await request.json()
@@ -35,7 +36,6 @@ async def get_user(request: Request):
         "subscription_expiry": user.get("subscription_expiry", None)
     }
 
-# Placeholder endpoint for buying gems
 @app.post("/api/buy_gems")
 async def buy_gems(request: Request):
     data = await request.json()
@@ -48,7 +48,6 @@ async def buy_gems(request: Request):
     save_user(uid, user)
     return {"success": True, "gems": user["gems"]}
 
-# Placeholder endpoint for buying heartbeats
 @app.post("/api/buy_heartbeats")
 async def buy_heartbeats(request: Request):
     data = await request.json()
@@ -61,9 +60,6 @@ async def buy_heartbeats(request: Request):
     save_user(uid, user)
     return {"success": True, "heartbeats": user["heartbeats"]}
 
-# Placeholder endpoint for buying/extending subscription (by 30 days per quantity)
-from datetime import datetime, timedelta
-
 @app.post("/api/buy_subscription")
 async def buy_subscription(request: Request):
     data = await request.json()
@@ -72,7 +68,6 @@ async def buy_subscription(request: Request):
     if not uid or qty <= 0:
         return JSONResponse(status_code=400, content={"success": False, "message": "Invalid UID or quantity"})
     user = load_user(uid)
-    # Calculate new expiry (extend from now or from current expiry)
     now = datetime.utcnow()
     current_expiry = user.get("subscription_expiry")
     if current_expiry:
@@ -89,7 +84,6 @@ async def buy_subscription(request: Request):
     save_user(uid, user)
     return {"success": True, "subscription_expiry": user["subscription_expiry"]}
 
-# Error handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
