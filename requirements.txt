@@ -1,12 +1,31 @@
+# Core API dependencies
 fastapi
-uvicorn
-python-telegram-bot
+uvicorn[standard]
+
+# Telegram bot (pin version for stability!)
+python-telegram-bot==20.8
+
+# AI/OpenAI
 openai==0.28.1
+
+# Data handling and async HTTP
 pydantic
-h11
 httpx
-starlette
 aiohttp
-# Optionally, for logging flexibility (already in Python stdlib, but 3rd party logging if you use it elsewhere)
+
+# Starlette and h11 are already pulled in by FastAPI/uvicorn, but can be explicit:
+starlette
+h11
+
+# If you use logging enhancements, uncomment below:
 # loguru
-# Add any other dependencies used in your custom modules below
+
+# --- Add your own modules' dependencies here (if any) ---
+# For example, if you need Pillow for images:
+# pillow
+
+# For file I/O or data storage (if you use them):
+# aiosqlite
+# sqlalchemy
+
+# Make sure all imports in your bot and API code have corresponding entries here!
