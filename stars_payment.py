@@ -10,7 +10,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory user data (reset after server restart!)
 users = {}
 
 @app.post("/api/user")
@@ -34,6 +33,17 @@ async def buy_heartbeats(request: Request):
     user = users.setdefault(user_id, {"gems": 0, "heartbeats": 0, "subscription_expiry": None})
     user["heartbeats"] += amount
     return {"status": "success", "message": "Heartbeats bought", "heartbeats": user["heartbeats"]}
+
+@app.post("/api/use_heartbeat")
+async def use_heartbeat(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id", "unknown_user")
+    user = users.setdefault(user_id, {"gems": 0, "heartbeats": 0, "subscription_expiry": None})
+    if user["heartbeats"] > 0:
+        user["heartbeats"] -= 1
+        return {"status": "success", "message": "Heartbeat used", "heartbeats": user["heartbeats"]}
+    else:
+        return {"status": "error", "message": "No heartbeats left", "heartbeats": 0}
 
 @app.post("/api/buy_gems")
 async def buy_gems(request: Request):
