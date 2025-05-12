@@ -114,9 +114,7 @@ async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_USER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
         return
-    # Reset heartbeats to 5 as admin (call buy_heartbeats_api with enough to make at least 5)
     try:
-        # Get current heartbeats
         user_info = await get_user_api(uid)
         current = int(user_info.get("heartbeats", 0))
         to_add = max(5 - current, 0)
@@ -134,15 +132,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
     result = await use_heartbeat_api(uid)
 
-    # Auto-reset for admin if out of heartbeats
+    # Admin auto-reset logic, with NO early return
     if update.effective_user.id == ADMIN_USER_ID and (result.get("heartbeats", 0) <= 0):
-    await buy_heartbeats_api(uid, 5)
-    await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
-    # Re-fetch heartbeats after resetting to continue as normal
-    result = await get_user_api(uid)
-    # Don't return! Allow the rest of the function to run
+        await buy_heartbeats_api(uid, 5)
+        await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
+        # Re-fetch heartbeats after resetting to continue as normal
+        result = await get_user_api(uid)
+        # Don't return! Allow the rest of the function to run
 
-    if not result.get("success", False) or result.get("heartbeats", 0) <= 0:
+    if not result.get("success", True) or result.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue.\n\nIf you are the admin, use /resetme to restore your heartbeats."
         )
@@ -154,10 +152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_input = update.message.text
         logging.info(f"User Input from {uid}: {user_input}")
 
-        # Optionally fetch the latest user data if needed for context/history
         user_api_data = await get_user_api(uid)
-        # If you want to use mood/history, pass from user_data[uid] or extend backend to serve history
-
         reply = await generate_reply(uid, user_input, user_data.get(uid, {}))
         logging.info(f"Generated Reply: {reply}")
 
@@ -175,7 +170,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logging.warning(f"No fantasy image returned for user {uid}.")
 
         logging.info(
-            f"User {uid} heartbeat decremented via API. Remaining heartbeats: {result['heartbeats']}"
+            f"User {uid} heartbeat decremented via API. Remaining heartbeats: {result.get('heartbeats', 0)}"
         )
 
     except ValueError as ve:
