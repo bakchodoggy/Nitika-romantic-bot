@@ -83,6 +83,20 @@ async def buy_subscription(request: Request):
     save_user(uid, user)
     return {"success": True, "subscription_expiry": user["subscription_expiry"]}
 
+@app.post("/api/use_heartbeat")
+async def use_heartbeat(request: Request):
+    data = await request.json()
+    uid = data.get("uid")
+    if not uid:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Missing uid"})
+    user = load_user(uid)
+    if user.get("heartbeats", 0) > 0:
+        user["heartbeats"] -= 1
+        save_user(uid, user)
+        return {"success": True, "heartbeats": user["heartbeats"]}
+    else:
+        return {"success": False, "message": "No heartbeats left", "heartbeats": 0}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
