@@ -26,28 +26,22 @@ async def api_post(endpoint, payload):
         return res.json()
 
 async def get_user_api(uid):
-    # Returns dict with gems, heartbeats, subscription_expiry
     return await api_post("/api/user", {"uid": uid})
 
 async def use_heartbeat_api(uid):
-    # Returns dict with success, heartbeats
     return await api_post("/api/use_heartbeat", {"uid": uid})
 
 async def buy_heartbeats_api(uid, quantity):
-    # Returns dict with success, heartbeats
     return await api_post("/api/buy_heartbeats", {"uid": uid, "quantity": quantity})
 
 async def buy_gems_api(uid, quantity):
-    # Returns dict with success, gems
     return await api_post("/api/buy_gems", {"uid": uid, "quantity": quantity})
 
 async def buy_subscription_api(uid, quantity):
-    # Returns dict with success, subscription_expiry
     return await api_post("/api/buy_subscription", {"uid": uid, "quantity": quantity})
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    # Optionally fetch user to ensure they exist in backend
     await get_user_api(uid)
 
     mood_keyboard = [
@@ -93,7 +87,6 @@ async def mood_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mood_choice = mood_map.get(query.data, "💫 Whispering Fantasy")
     scenario = scenario_map.get(query.data, "")
 
-    # Optionally store mood in your backend if you want, or keep it in memory
     user_data[uid] = user_data.get(uid, {})
     user_data[uid]["mood"] = mood_choice
 
@@ -113,8 +106,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def forgetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = str(update.effective_user.id)
-    # Optionally call a delete user API if you build one
+    # Optional: Implement a delete user API in your backend if needed.
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
 async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -122,17 +114,32 @@ async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_USER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
         return
-    # Reset heartbeats to 5 as admin (call buy_heartbeats or implement a reset API)
-    await buy_heartbeats_api(uid, 5)
-    await update.message.reply_text("Your heartbeats have been reset! ❤️")
+    # Reset heartbeats to 5 as admin (call buy_heartbeats_api with enough to make at least 5)
+    try:
+        # Get current heartbeats
+        user_info = await get_user_api(uid)
+        current = int(user_info.get("heartbeats", 0))
+        to_add = max(5 - current, 0)
+        if to_add > 0:
+            await buy_heartbeats_api(uid, to_add)
+        await update.message.reply_text("Your heartbeats have been reset! ❤️")
+    except Exception as e:
+        logging.error(f"Error in resetme: {e}")
+        await update.message.reply_text("Failed to reset heartbeats. Please try again.")
 
 async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Your Telegram user ID is: {update.effective_user.id}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    # Use API to decrement heartbeats
     result = await use_heartbeat_api(uid)
+
+    # Auto-reset for admin if out of heartbeats
+    if update.effective_user.id == ADMIN_USER_ID and (result.get("heartbeats", 0) <= 0):
+        await buy_heartbeats_api(uid, 5)
+        await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
+        return
+
     if not result.get("success", False) or result.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue.\n\nIf you are the admin, use /resetme to restore your heartbeats."
