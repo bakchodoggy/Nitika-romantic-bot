@@ -10,6 +10,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory user storage (per user_id)
 users = {}
 
 @app.post("/api/user")
