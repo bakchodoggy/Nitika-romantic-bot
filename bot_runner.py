@@ -136,9 +136,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Auto-reset for admin if out of heartbeats
     if update.effective_user.id == ADMIN_USER_ID and (result.get("heartbeats", 0) <= 0):
-        await buy_heartbeats_api(uid, 5)
-        await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
-        return
+    await buy_heartbeats_api(uid, 5)
+    await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
+    # Re-fetch heartbeats after resetting to continue as normal
+    result = await get_user_api(uid)
+    # Don't return! Allow the rest of the function to run
 
     if not result.get("success", False) or result.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
