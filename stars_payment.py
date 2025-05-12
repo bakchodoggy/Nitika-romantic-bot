@@ -15,8 +15,15 @@ app.add_middleware(
 @app.post("/api/user")
 async def user_endpoint(request: Request):
     data = await request.json()
-    # You can customize logic here!
-    return {"status": "success", "message": "User endpoint hit", "data": data}
+    user_id = data.get("user_id", "unknown_user")
+    # TODO: In a real app, fetch these from your database using user_id
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "gems": 42,  # example value
+        "heartbeats": 7,  # example value
+        "subscription_expiry": "2025-06-01T00:00:00Z"  # example date
+    }
 
 @app.post("/api/buy_gems")
 async def buy_gems(request: Request):
