@@ -1,26 +1,54 @@
 import os
 import logging
+import httpx
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 from chat_manager import generate_reply
-from data_manager import load_user, save_user
 from fantasy_manager import get_random_fantasy_image
 from utils import send_typing_action, trim_reply
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_USER_ID = 1444093362
 
-if not TOKEN:
-    raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set!")
+# Set your FastAPI backend URL here
+BACKEND_BASE_URL = "https://site--nitika-romantic-bot--87r4gwyv9z7f.code.run"
 
 logging.basicConfig(level=logging.INFO)
 
 user_data = {}
 
+async def api_post(endpoint, payload):
+    url = f"{BACKEND_BASE_URL}{endpoint}"
+    async with httpx.AsyncClient() as client:
+        res = await client.post(url, json=payload)
+        res.raise_for_status()
+        return res.json()
+
+async def get_user_api(uid):
+    # Returns dict with gems, heartbeats, subscription_expiry
+    return await api_post("/api/user", {"uid": uid})
+
+async def use_heartbeat_api(uid):
+    # Returns dict with success, heartbeats
+    return await api_post("/api/use_heartbeat", {"uid": uid})
+
+async def buy_heartbeats_api(uid, quantity):
+    # Returns dict with success, heartbeats
+    return await api_post("/api/buy_heartbeats", {"uid": uid, "quantity": quantity})
+
+async def buy_gems_api(uid, quantity):
+    # Returns dict with success, gems
+    return await api_post("/api/buy_gems", {"uid": uid, "quantity": quantity})
+
+async def buy_subscription_api(uid, quantity):
+    # Returns dict with success, subscription_expiry
+    return await api_post("/api/buy_subscription", {"uid": uid, "quantity": quantity})
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    user_data[uid] = load_user(uid) or {}
+    # Optionally fetch user to ensure they exist in backend
+    await get_user_api(uid)
 
     mood_keyboard = [
         [InlineKeyboardButton("💫 Whispering Fantasy", callback_data="mood_whispering")],
@@ -65,9 +93,9 @@ async def mood_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mood_choice = mood_map.get(query.data, "💫 Whispering Fantasy")
     scenario = scenario_map.get(query.data, "")
 
-    user_data[uid] = load_user(uid) or {}
+    # Optionally store mood in your backend if you want, or keep it in memory
+    user_data[uid] = user_data.get(uid, {})
     user_data[uid]["mood"] = mood_choice
-    save_user(uid, user_data[uid])
 
     await query.edit_message_text(
         f"Mood set to: {mood_choice}!\n\n{scenario}\n\nNow type anything and let's chat ❤️"
@@ -75,15 +103,18 @@ async def mood_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    data = user_data.get(uid) or load_user(uid) or {}
+    data = await get_user_api(uid)
     await update.message.reply_text(
-        f"**Your Profile**\nName: {data.get('name', 'Unknown')}\nHeartbeats: {data.get('heartbeats', 0)}\nMood: {data.get('mood', 'Not set')}"
+        f"**Your Profile**\n"
+        f"Name: {update.effective_user.first_name or 'Unknown'}\n"
+        f"Heartbeats: {data.get('heartbeats', 0)}\n"
+        f"Gems: {data.get('gems', 0)}\n"
+        f"Subscription Expiry: {data.get('subscription_expiry', '--/--/----')}"
     )
 
 async def forgetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    save_user(uid, {})
-    user_data.pop(uid, None)
+    # Optionally call a delete user API if you build one
     await update.message.reply_text("Memory wiped... but I’ll miss our chats 💔")
 
 async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -91,9 +122,8 @@ async def resetme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_USER_ID:
         await update.message.reply_text("You are not authorized to use this command.")
         return
-    user_data[uid] = load_user(uid) or {}
-    user_data[uid]["heartbeats"] = 5
-    save_user(uid, user_data[uid])
+    # Reset heartbeats to 5 as admin (call buy_heartbeats or implement a reset API)
+    await buy_heartbeats_api(uid, 5)
     await update.message.reply_text("Your heartbeats have been reset! ❤️")
 
 async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,15 +131,9 @@ async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    user_data.setdefault(uid, load_user(uid) or {})
-    data = user_data[uid]
-
-    if update.effective_user.id == ADMIN_USER_ID and data.get("heartbeats", 0) <= 0:
-        data["heartbeats"] = 5
-        save_user(uid, data)
-        await update.message.reply_text("Admin detected! Your heartbeats have been automatically reset.")
-
-    if data.get("heartbeats", 0) <= 0:
+    # Use API to decrement heartbeats
+    result = await use_heartbeat_api(uid)
+    if not result.get("success", False) or result.get("heartbeats", 0) <= 0:
         await update.message.reply_text(
             "You're out of heartbeats! Invite a friend or buy more to continue.\n\nIf you are the admin, use /resetme to restore your heartbeats."
         )
@@ -121,7 +145,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_input = update.message.text
         logging.info(f"User Input from {uid}: {user_input}")
 
-        reply = await generate_reply(uid, user_input, data)
+        # Optionally fetch the latest user data if needed for context/history
+        user_api_data = await get_user_api(uid)
+        # If you want to use mood/history, pass from user_data[uid] or extend backend to serve history
+
+        reply = await generate_reply(uid, user_input, user_data.get(uid, {}))
         logging.info(f"Generated Reply: {reply}")
 
         if not reply or reply.strip() == "":
@@ -129,7 +157,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(reply)
 
-        if data.get("fantasy_mode"):
+        if user_data.get(uid, {}).get("fantasy_mode"):
             image = get_random_fantasy_image()
             if image:
                 logging.info(f"Fantasy Image URL: {image}")
@@ -137,10 +165,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 logging.warning(f"No fantasy image returned for user {uid}.")
 
-        data["heartbeats"] -= 1
-        save_user(uid, data)
         logging.info(
-            f"User {uid} data saved successfully. Remaining heartbeats: {data['heartbeats']}"
+            f"User {uid} heartbeat decremented via API. Remaining heartbeats: {result['heartbeats']}"
         )
 
     except ValueError as ve:
