@@ -17,6 +17,9 @@ aiohttp
 starlette
 h11
 
+# HTTP requests library for backend/bot communication
+requests
+
 # Optional logging enhancements:
 # loguru
 
@@ -25,4 +28,4 @@ h11
 # aiosqlite   # For async sqlite
 # sqlalchemy  # For ORM
 
-# Ensure every import in your code is listed here!
+# Ensure every import in your code is listed here! 
