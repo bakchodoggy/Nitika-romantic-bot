@@ -5,17 +5,17 @@ import os
 openai.api_key = os.getenv("OPENROUTER_API_KEY")
 openai.api_base = "https://openrouter.ai/api/v1"
 
-# Helper: get recent chat history for more contextual replies
-def get_chat_history(user_data, user_input, window=3):
+def get_chat_history(user_data, user_input=None, window=5):
     """
     Returns OpenAI-style message history from user_data.
-    Keeps last `window` turns (user+assistant).
+    Keeps last `window` turns (user+assistant). Optionally appends the current user_input.
     """
     history = user_data.get("history", [])
     messages = []
     for role, text in history[-window*2:]:
         messages.append({"role": role, "content": text})
-    messages.append({"role": "user", "content": user_input})
+    if user_input is not None:
+        messages.append({"role": "user", "content": user_input})
     return messages
 
 async def generate_reply(uid, user_input, user_data):
@@ -37,12 +37,9 @@ async def generate_reply(uid, user_input, user_data):
             "Sometimes use emojis, but not every message."
         )
 
-        # Use chat history for context if available
+        # Always start with system prompt, then the last 5 turns + current input
         messages = [{"role": "system", "content": system_prompt}]
-        if "history" in user_data:
-            for role, text in user_data["history"][-6:]:
-                messages.append({"role": role, "content": text})
-        messages.append({"role": "user", "content": user_input})
+        messages += get_chat_history(user_data, user_input, window=5)
 
         response = openai.ChatCompletion.create(
             model="mistralai/mixtral-8x7b-instruct",
