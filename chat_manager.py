@@ -34,7 +34,8 @@ async def generate_reply(uid, user_input, user_data):
             "Always answer directly to what the user just said, and keep the conversation realistic, on-topic, and in context. "
             "Don't say you are an AI or chatbot, don't introduce yourself, don't repeat the user's message. "
             "Use up to 4-5 lines if needed, but no more. "
-            "Sometimes use emojis, but not every message."
+            "Sometimes use emojis, but not every message. "
+            "Do NOT include any notes, instructions, or meta-comments in your replies."
         )
 
         # Always start with system prompt, then the last 5 turns + current input
@@ -49,6 +50,10 @@ async def generate_reply(uid, user_input, user_data):
         )
 
         reply = response["choices"][0]["message"]["content"].strip()
+
+        # If the reply contains any "Note:" or system prompt leakage, remove it.
+        if "Note:" in reply:
+            reply = reply.split("Note:")[0].strip().rstrip("()").strip()
 
         # Save to history for next time (truncate if needed)
         history = user_data.get("history", [])
