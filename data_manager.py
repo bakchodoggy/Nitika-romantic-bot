@@ -10,6 +10,7 @@ def load_data():
     with data_lock:
         try:
             if not os.path.exists(DATA_FILE):
+                # If the file doesn't exist, create an empty JSON file
                 with open(DATA_FILE, "w") as f:
                     json.dump({}, f)
             with open(DATA_FILE, "r") as f:
@@ -28,9 +29,19 @@ def save_data(data):
             print("Error saving data!")
 
 def load_user(uid):
-    """Retrieves a specific user's data."""
+    """Retrieves a specific user's data. Initializes missing fields if necessary."""
     data = load_data()
-    return data.get(str(uid), {})
+    user = data.get(str(uid), {})
+    # Initialize missing fields for the user
+    if "telegram_stars" not in user:
+        user["telegram_stars"] = 0
+    if "gems" not in user:
+        user["gems"] = 0
+    if "heartbeats" not in user:
+        user["heartbeats"] = 0
+    if "subscription_expiry" not in user:
+        user["subscription_expiry"] = None
+    return user
 
 def save_user(uid, user_data):
     """Saves individual user data securely."""
